@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mes PR CrossFit</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--tx:#1d1d1b;--mut:#6b6b66;--ac:#d9480f;--bd:#e3e1db;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171716;--card:#232321;--tx:#f1efe9;--mut:#a09e96;--ac:#ff7a3d;--bd:#34332f}}
+:root[data-theme="dark"]{--bg:#171716;--card:#232321;--tx:#f1efe9;--mut:#a09e96;--ac:#ff7a3d;--bd:#34332f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,Segoe UI,sans-serif;line-height:1.4}
+main{max-width:640px;margin:0 auto;padding:14px 14px 40px}
+h1{font-size:21px;margin:4px 0 12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.row:first-child{margin-top:0}
+input,select,textarea,button{font:inherit;font-size:16px;padding:10px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--tx)}
+input,select{flex:1;min-width:100px}
+textarea{width:100%;min-height:80px;resize:vertical}
+button{background:var(--ac);color:#fff;border:0;font-weight:600;cursor:pointer}
+button.g{background:transparent;color:var(--mut);border:1px solid var(--bd);font-weight:400;padding:6px 10px;font-size:14px}
+.mv{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.best{font-size:20px;font-weight:700;color:var(--ac);white-space:nowrap}
+.mut{color:var(--mut);font-size:13px}
+.desc{white-space:pre-wrap;margin:8px 0;font-size:14px}
+.hist{margin-top:8px;border-top:1px solid var(--bd);padding-top:8px}
+.hist>div{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:14px;padding:3px 0}
+.tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto}
+.tabs button{background:var(--card);color:var(--tx);border:1px solid var(--bd);font-weight:400;white-space:nowrap}
+.tabs button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.tag{display:inline-block;font-size:11px;background:var(--ac);color:#fff;border-radius:6px;padding:1px 6px;margin-left:6px}
+svg{width:100%;height:60px;margin-top:6px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:14px;max-width:90%;display:none;z-index:9;text-align:center}
+section{display:none}section.on{display:block}
+label.ck{display:flex;align-items:center;gap:6px;font-size:14px}
+label.ck input{flex:none;min-width:0;width:18px;height:18px}
+</style>
+</head>
+<body>
+<main>
+<h1>🏋️ Mes PR CrossFit</h1>
+<div class="tabs" id="nav">
+  <button data-v="pr">PR</button><button data-v="wod">Entraînements</button><button data-v="mv">Mouvements</button><button data-v="pct">% Calcul</button>
+</div>
+
+<section id="v-pr">
+  <div class="card">
+    <div class="row"><select id="mv"></select></div>
+    <div class="row">
+      <input id="val" inputmode="decimal" placeholder="Valeur">
+      <select id="unit"></select>
+      <input id="date" type="date">
+    </div>
+    <div class="row"><input id="note" placeholder="Note (optionnel)"><button id="add">Ajouter</button></div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div id="list"></div>
+</section>
+
+<section id="v-wod">
+  <div class="card">
+    <div class="row"><input id="wn" placeholder="Nom de l’entraînement"></div>
+    <div class="row"><textarea id="wd" placeholder="Description (ex. 5 rounds : 10 thrusters, 15 pull-ups…)"></textarea></div>
+    <div class="row">
+      <select id="wt">
+        <option value="time">Score : temps (plus bas = mieux)</option>
+        <option value="reps">Score : reps / rounds (plus haut = mieux)</option>
+        <option value="load">Score : charge (plus haut = mieux)</option>
+      </select>
+      <button id="addw">Créer</button>
+    </div>
+  </div>
+  <div id="wlist"></div>
+</section>
+
+<section id="v-pct">
+  <div class="card">
+    <div class="row"><select id="pl"></select></div>
+    <div class="row"><input id="pp" inputmode="decimal" placeholder="% (ex. 77)"><input id="pr1" inputmode="decimal" placeholder="1RM (auto)"></div>
+    <div class="row">
+      <select id="pu"><option>lb</option><option>kg</option></select>
+      <select id="pbar"></select>
+      <select id="pround"><option value="std">Arrondi : 5 lb / 2,5 kg</option><option value="1">Arrondi : 1</option><option value="0">Exact (0,1)</option></select>
+    </div>
+    <div id="pout"></div>
+  </div>
+  <div class="card" id="ptab"></div>
+</section>
+
+<section id="v-mv">
+  <div class="card">
+    <div class="row">
+      <input id="mname" placeholder="Nom du mouvement">
+      <input id="mcat" list="cats" placeholder="Catégorie (ex. Gym)">
+      <datalist id="cats"></datalist>
+    </div>
+    <div class="row"><select id="munit"></select><button id="addm">Ajouter</button></div>
+  </div>
+  <div id="mlist"></div>
+</section>
+
+<div class="card">
+  <div class="mut" id="sync" style="margin-bottom:4px">Synchronisation…</div>
+  <div class="mut" id="msg" style="margin-bottom:8px"></div>
+  <textarea id="bk" placeholder="Sauvegarde : colle ici pour restaurer"></textarea>
+  <div class="row"><button class="g" id="exp">Copier la sauvegarde</button><button class="g" id="imp">Restaurer</button></div>
+</div>
+</main>
+<div id="toast"></div>
+<script>
+const BASE={
+ "Haltérophilie":["Snatch","Clean & Jerk","Clean","Power Clean","Jerk","Overhead Squat"],
+ "Force":["Back Squat","Front Squat","Deadlift","Shoulder Press","Bench Press","Thruster"],
+ "Gym":["Strict Pull-ups (max reps)","Muscle-ups (max reps)","Handstand Push-ups (max reps)"],
+ "Benchmarks":["Fran","Murph","Grace","Helen","Cindy"]
+};
+const UNITS=["lb","kg","reps","min:sec"];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const U=u=>u==="min:sec"?"":" "+u;
+function load(){
+ try{const s=JSON.parse(localStorage.getItem("pr_v2"));if(s&&s.prs)return s}catch(e){}
+ let prs=[];try{prs=JSON.parse(localStorage.getItem("pr_crossfit")||"[]")}catch(e){}
+ return{prs,moves:[],wods:[],logs:[]};
+}
+let S=load(),view="pr",cat="Tous",openW=null;
+let cdoc=null,timer=null,ver=0,sent=0,lastSent="";
+function setSync(t){$("sync").textContent=t}
+function save(){
+ try{localStorage.setItem("pr_v2",JSON.stringify(S))}catch(e){}
+ if(!cdoc)return;
+ ver++;setSync("☁️ Synchronisation…");clearTimeout(timer);timer=setTimeout(push,400);
+}
+async function push(){
+ const v=ver,snap=JSON.parse(JSON.stringify(S));lastSent=JSON.stringify(snap);
+ try{await cdoc.set(snap);sent=Math.max(sent,v);try{localStorage.setItem("pr_synced","1")}catch(e){}setSync(sent<ver?"☁️ Synchronisation…":"☁️ Synchronisé")}
+ catch(e){setSync("⚠️ Synchronisation impossible, données gardées sur cet appareil.")}
+}
+function clean(d){return{prs:d.prs||[],moves:d.moves||[],wods:d.wods||[],logs:d.logs||[]}}
+function merge(a,b){
+ const u=(x,y,k)=>[...new Map([...x,...y].map(e=>[e[k],e])).values()];
+ return{prs:u(a.prs,b.prs,"id"),moves:u(a.moves,b.moves,"name"),wods:u(a.wods,b.wods,"id"),logs:u(a.logs,b.logs,"id")};
+}
+function adopt(d){
+ if(!d||!Array.isArray(d.prs))return;
+ const n=clean(d);if(JSON.stringify(n)===JSON.stringify(S))return;
+ S=n;try{localStorage.setItem("pr_v2",JSON.stringify(S))}catch(e){}render();
+}
+async function initCloud(){
+ try{
+  if(typeof claude==="undefined")return setSync("Données sur cet appareil seulement.");
+  const [db,user]=await Promise.all([claude.use("db"),claude.use("user")]);
+  const id=user?await user.id():null;
+  if(!db||!id)return setSync("Données sur cet appareil seulement.");
+  cdoc=db.doc("data/users/"+id+"/state");
+  const first=await cdoc.get();
+  let synced="";try{synced=localStorage.getItem("pr_synced")||""}catch(e){}
+  if(first.exists){
+   const remote=clean(first.data());
+   S=synced?remote:merge(remote,S);
+   try{localStorage.setItem("pr_v2",JSON.stringify(S))}catch(e){}
+   render();
+   if(JSON.stringify(S)!==JSON.stringify(remote))await push();else{try{localStorage.setItem("pr_synced","1")}catch(e){}}
+  }else{await push()}
+  setSync("☁️ Synchronisé");
+  cdoc.onSnapshot(snap=>{if(snap.metadata.hasPendingWrites||!snap.exists||ver>sent)return;if(JSON.stringify(clean(snap.data()))===lastSent)return;adopt(snap.data())},()=>setSync("⚠️ Synchronisation interrompue."));
+ }catch(e){setSync("⚠️ Synchronisation impossible, données gardées sur cet appareil.")}
+}
+let tt;function msg(t){$("msg").textContent=t;const o=$("toast");o.textContent=t;o.style.display=t?"block":"none";clearTimeout(tt);tt=setTimeout(()=>{o.style.display="none"},3500)}
+function moves(){const o={};for(const c in BASE)o[c]=BASE[c].slice();S.moves.forEach(m=>(o[m.cat]=o[m.cat]||[]).push(m.name));return o}
+function catOf(n){const o=moves();for(const c in o)if(o[c].includes(n))return c;return"Autres"}
+function defUnit(n){const m=S.moves.find(x=>x.name===n);if(m)return m.unit;return/reps/.test(n)?"reps":BASE.Benchmarks.includes(n)?"min:sec":"lb"}
+function sec(v){const p=String(v).split(":");return(+p[0]||0)*60+(+p[1]||0)}
+function sn(unit,v){return unit==="min:sec"?sec(v):parseFloat(v)}
+function normT(v){
+ v=String(v).trim();if(/^\d+$/.test(v))return(+v)+":00";
+ let m=v.match(/^(\d+):(\d{1,2})$/);if(m&&+m[2]<60)return(+m[1])+":"+m[2].padStart(2,"0");
+ m=v.match(/^(\d+):(\d{1,2}):(\d{1,2})$/);if(m&&+m[2]<60&&+m[3]<60)return(+m[1]*60+(+m[2]))+":"+m[3].padStart(2,"0");
+ return null;
+}
+function ok(unit,v){return unit==="min:sec"?normT(v)!==null:v!==""&&!isNaN(parseFloat(v))}
+
+function fillMv(){
+ const cur=$("mv").value,o=moves();
+ $("mv").innerHTML=Object.entries(o).map(([c,a])=>`<optgroup label="${esc(c)}">${a.map(m=>`<option>${esc(m)}</option>`).join("")}</optgroup>`).join("")+`<option value="__n">+ Nouveau mouvement…</option>`;
+ if([...$("mv").options].some(x=>x.value===cur))$("mv").value=cur;
+ $("cats").innerHTML=Object.keys(o).map(c=>`<option value="${esc(c)}">`).join("");
+ $("unit").value=defUnit($("mv").value);
+}
+$("mv").onchange=()=>{if($("mv").value==="__n"){go("mv");$("mname").focus();return}$("unit").value=defUnit($("mv").value)};
+
+$("add").onclick=()=>{
+ let v=$("val").value.trim();const m=$("mv").value,unit=$("unit").value;
+ if(!m||m==="__n"||!v)return msg("Mouvement et valeur requis.");
+ if(!ok(unit,v))return msg(unit==="min:sec"?"Format du temps : 45:30 (min:sec)":"Valeur numérique requise.");
+ if(unit==="min:sec")v=normT(v);
+ S.prs.push({id:Date.now(),m,v,unit,d:$("date").value,n:$("note").value.trim()});
+ save();$("val").value="";$("note").value="";msg("PR ajouté ✔");render();
+};
+
+$("addm").onclick=()=>{
+ const n=$("mname").value.trim(),c=$("mcat").value.trim()||"Autres";
+ if(!n)return msg("Nom du mouvement requis.");
+ if(Object.values(moves()).flat().some(x=>x.toLowerCase()===n.toLowerCase()))return msg("Ce mouvement existe déjà.");
+ S.moves.push({name:n,cat:c,unit:$("munit").value});
+ save();$("mname").value="";msg("Mouvement ajouté ✔");render();
+};
+
+$("addw").onclick=()=>{
+ const n=$("wn").value.trim();if(!n)return msg("Nom requis.");
+ S.wods.push({id:Date.now(),name:n,desc:$("wd").value.trim(),t:$("wt").value});
+ save();$("wn").value="";$("wd").value="";msg("Entraînement créé ✔");render();
+};
+
+function spark(arr){
+ if(arr.length<2)return"";
+ const ys=arr.map(e=>sn(e.unit,e.v)),mn=Math.min(...ys),mx=Math.max(...ys),r=mx-mn||1;
+ const pts=ys.map((y,i)=>`${i/(ys.length-1)*280+10},${50-(y-mn)/r*40}`).join(" ");
+ return`<svg viewBox="0 0 300 60" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="var(--ac)" stroke-width="2"/></svg>`;
+}
+function better(unit,a,b){return unit==="min:sec"?sn(unit,a)<sn(unit,b):sn(unit,a)>sn(unit,b)}
+
+function renderPR(){
+ const cats=["Tous",...new Set(S.prs.map(e=>catOf(e.m)))];
+ if(!cats.includes(cat))cat="Tous";
+ $("tabs").innerHTML=cats.map(c=>`<button data-c="${esc(c)}" class="${c===cat?"on":""}">${esc(c)}</button>`).join("");
+ const by={};S.prs.filter(e=>cat==="Tous"||catOf(e.m)===cat).forEach(e=>(by[e.m]=by[e.m]||[]).push(e));
+ const names=Object.keys(by).sort();
+ if(!names.length){$("list").innerHTML=`<div class="card mut">Aucun PR pour l’instant. Ajoute ton premier ci-dessus.</div>`;return}
+ $("list").innerHTML=names.map(m=>{
+  const h=by[m].sort((a,b)=>a.d.localeCompare(b.d)||a.id-b.id);
+  let best=h[0];h.forEach(e=>{if(e.unit===best.unit&&better(e.unit,e.v,best.v))best=e});
+  return`<div class="card"><div class="mv"><div><strong>${esc(m)}</strong><div class="mut">${h.length} entrée${h.length>1?"s":""}</div></div><div class="best">${esc(best.v)}${U(best.unit)}</div></div>
+  ${spark(h.filter(e=>e.unit===best.unit))}
+  <div class="hist">${h.slice().reverse().map(e=>`<div><span>${e.d} · ${esc(e.v)}${U(e.unit)}${e.id===best.id?'<span class="tag">PR</span>':""}${e.n?` <span class="mut">— ${esc(e.n)}</span>`:""}</span><button class="g" data-a="delpr" data-id="${e.id}">✕</button></div>`).join("")}</div></div>`;
+ }).join("");
+}
+
+const TL={time:"Temps",reps:"Reps / rounds",load:"Charge"};
+const WU={time:"min:sec",reps:"reps",load:"lb"};
+function renderW(){
+ if(!S.wods.length){$("wlist").innerHTML=`<div class="card mut">Aucun entraînement. Crée le premier ci-dessus pour le refaire et comparer tes scores.</div>`;return}
+ $("wlist").innerHTML=S.wods.slice().reverse().map(w=>{
+  const u=WU[w.t],L=S.logs.filter(l=>l.w===w.id).sort((a,b)=>a.d.localeCompare(b.d)||a.id-b.id);
+  let best=null;L.forEach(l=>{if(!best||better(u,l.s,best.s))best=l});
+  const form=openW===w.id?`<div class="hist"><div class="row" style="margin:0"><input id="ls" data-t="${w.t}" inputmode="${w.t==="time"?"numeric":"decimal"}" placeholder="${w.t==="time"?"Temps min:sec (ex. 45:30)":w.t==="load"?"Charge (lb)":"Reps / rounds"}"><input id="ld" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+  <div class="row"><input id="ln" placeholder="Note (optionnel)"><label class="ck"><input id="lrx" type="checkbox" checked> Rx</label><button data-a="log" data-id="${w.id}">Enregistrer</button></div></div>`:"";
+  return`<div class="card"><div class="mv"><div><strong>${esc(w.name)}</strong><div class="mut">${TL[w.t]} · ${L.length} résultat${L.length>1?"s":""}</div></div>${best?`<div class="best">${esc(best.s)}${U(u)}</div>`:""}</div>
+  ${w.desc?`<div class="desc">${esc(w.desc)}</div>`:""}
+  ${spark(L.map(l=>({unit:u,v:l.s})))}
+  <div class="row"><button data-a="open" data-id="${w.id}">${openW===w.id?"Fermer":"Noter un résultat"}</button><button class="g" data-a="delw" data-id="${w.id}">Supprimer</button></div>
+  ${form}
+  ${L.length?`<div class="hist">${L.slice().reverse().map(l=>`<div><span>${l.d} · ${esc(l.s)}${U(u)}${l.rx?"":" (scaled)"}${l.id===best.id?'<span class="tag">Meilleur</span>':""}${l.n?` <span class="mut">— ${esc(l.n)}</span>`:""}</span><button class="g" data-a="dellog" data-id="${l.id}">✕</button></div>`).join("")}</div>`:""}</div>`;
+ }).join("");
+}
+
+function renderM(){
+ $("mlist").innerHTML=S.moves.length?`<div class="card"><strong>Mes mouvements</strong><div class="hist">${S.moves.map(m=>`<div><span>${esc(m.name)} <span class="mut">· ${esc(m.cat)} · ${esc(m.unit)}</span></span><button class="g" data-a="delmv" data-n="${esc(m.name)}">✕</button></div>`).join("")}</div></div>`:`<div class="card mut">Aucun mouvement personnalisé. Ajoute ceux qui manquent à la liste de base.</div>`;
+ $("munit").innerHTML=UNITS.map(u=>`<option>${u}</option>`).join("");
+}
+
+const KG=2.20462;
+const toU=(v,f,t)=>f===t?v:f==="lb"?v/KG:v*KG;
+const fm=x=>String(+x.toFixed(2));
+function liftBest(n,u){let b=null;S.prs.forEach(e=>{if(e.m!==n||(e.unit!=="lb"&&e.unit!=="kg"))return;const x=toU(parseFloat(e.v),e.unit,u);if(b===null||x>b)b=x});return b}
+function rnd(x,u){const m=$("pround").value,s=m==="std"?(u==="lb"?5:2.5):m==="1"?1:0.1;return Math.round(x/s)*s}
+function renderPct(){
+ const cur=$("pl").value,names=[...new Set(S.prs.filter(e=>e.unit==="lb"||e.unit==="kg").map(e=>e.m))].sort();
+ $("pl").innerHTML=names.map(n=>`<option>${esc(n)}</option>`).join("")+`<option value="">Autre (j’entre mon 1RM)</option>`;
+ if([...$("pl").options].some(o=>o.value===cur))$("pl").value=cur;
+ calc();
+}
+function calc(){
+ const u=$("pu").value,p=parseFloat($("pp").value),ov=parseFloat($("pr1").value),lift=$("pl").value;
+ const auto=lift?liftBest(lift,u):null,usedOv=!isNaN(ov),rm=usedOv?ov:auto;
+ $("pr1").placeholder=auto?"1RM (auto : "+fm(auto)+")":"1RM (auto)";
+ if(!rm){$("pout").innerHTML=`<div class="mut" style="margin-top:10px">Choisis un mouvement avec un PR en poids, ou entre ton 1RM.</div>`;$("ptab").style.display="none";return}
+ $("ptab").style.display="";
+ if(isNaN(p))$("pout").innerHTML=`<div class="mut" style="margin-top:10px">1RM : ${fm(rm)} ${u}. Entre un pourcentage.</div>`;
+ else{
+  const w=rm*p/100,r=rnd(w,u),bar=parseFloat($("pbar").value);
+  $("pout").innerHTML=`<div class="best" style="font-size:36px;margin-top:10px">${fm(r)} ${u}</div><div class="mut">${fm(p)} % de ${fm(rm)} ${u}${usedOv?"":" (ton PR)"} · exact ${fm(w)}</div>${!isNaN(bar)&&r>bar?`<div style="margin-top:4px">Par côté : <strong>${fm((r-bar)/2)} ${u}</strong> <span class="mut">(barre ${fm(bar)})</span></div>`:""}`;
+ }
+ const ps=[];for(let i=50;i<=100;i+=5)ps.push(i);
+ $("ptab").innerHTML=`<div class="mut" style="margin-bottom:6px">Touche un pourcentage pour le calculer</div><div class="row" style="margin:0">${ps.map(i=>`<button class="g" data-pct="${i}" style="flex:1 1 30%">${i} % · ${fm(rnd(rm*i/100,u))}</button>`).join("")}</div>`;
+ $("ptab").querySelectorAll("[data-pct]").forEach(b=>b.onclick=()=>{$("pp").value=b.dataset.pct;calc()});
+}
+["pp","pr1"].forEach(i=>$(i).oninput=calc);
+["pl","pround","pbar"].forEach(i=>$(i).onchange=calc);
+$("pu").onchange=()=>{fillBar();calc()};
+function fillBar(){const u=$("pu").value;$("pbar").innerHTML=(u==="lb"?[45,35]:[20,15]).map(b=>`<option value="${b}">Barre ${b} ${u}</option>`).join("")}
+fillBar();
+function setValMode(){const t=$("unit").value==="min:sec";$("val").inputMode=t?"numeric":"decimal";$("val").placeholder=t?"Temps (ex. 45:30)":"Valeur"}
+function tfmt(s){const d=s.replace(/\D/g,"").slice(0,6);return d.length<=2?d:d.slice(0,-2)+":"+d.slice(-2)}
+document.addEventListener("input",e=>{const t=e.target;if((t.id==="val"&&$("unit").value==="min:sec")||(t.id==="ls"&&t.dataset.t==="time"))t.value=tfmt(t.value)});
+$("unit").addEventListener("change",setValMode);$("mv").addEventListener("change",setValMode);
+function go(v){view=v;render()}
+function render(){
+ $("nav").querySelectorAll("button").forEach(b=>b.className=b.dataset.v===view?"on":"");
+ ["pr","wod","mv","pct"].forEach(v=>$("v-"+v).className=v===view?"on":"");
+ fillMv();setValMode();renderPR();renderW();renderM();renderPct();
+}
+
+document.addEventListener("click",e=>{
+ const b=e.target.closest("button");if(!b)return;
+ if(b.parentNode===$("nav")){go(b.dataset.v);return}
+ if(b.parentNode===$("tabs")){cat=b.dataset.c;render();return}
+ const a=b.dataset.a;if(!a)return;const id=+b.dataset.id;
+ if(a==="delpr")S.prs=S.prs.filter(x=>x.id!==id);
+ else if(a==="open")openW=openW===id?null:id;
+ else if(a==="delmv")S.moves=S.moves.filter(m=>m.name!==b.dataset.n);
+ else if(a==="dellog")S.logs=S.logs.filter(l=>l.id!==id);
+ else if(a==="delw"){
+  if(b.dataset.c!=="1"){b.dataset.c="1";b.textContent="Confirmer ?";return}
+  S.wods=S.wods.filter(w=>w.id!==id);S.logs=S.logs.filter(l=>l.w!==id);
+ }else if(a==="log"){
+  const w=S.wods.find(x=>x.id===id);let s=$("ls").value.trim();
+  if(!ok(WU[w.t],s))return msg(w.t==="time"?"Format du temps : 45:30 (min:sec)":"Valeur numérique requise.");
+  if(w.t==="time")s=normT(s);
+  S.logs.push({id:Date.now(),w:id,s,d:$("ld").value,n:$("ln").value.trim(),rx:$("lrx").checked});
+  openW=null;msg("Résultat enregistré ✔");
+ }
+ save();render();
+});
+
+$("exp").onclick=async()=>{
+ const t=JSON.stringify(S);$("bk").value=t;$("bk").select();
+ try{await navigator.clipboard.writeText(t);msg("Sauvegarde copiée. Garde-la dans tes notes.")}catch(e){msg("Copie manuelle : sélectionne le texte ci-dessus.")}
+};
+$("imp").onclick=()=>{
+ try{const s=JSON.parse($("bk").value);if(!s||!Array.isArray(s.prs))throw 0;
+  S={prs:s.prs,moves:s.moves||[],wods:s.wods||[],logs:s.logs||[]};save();$("bk").value="";msg("Sauvegarde restaurée ✔");render();
+ }catch(e){msg("Sauvegarde invalide.")}
+};
+
+$("date").value=new Date().toISOString().slice(0,10);
+$("unit").innerHTML=UNITS.map(u=>`<option>${u}</option>`).join("");
+render();
+initCloud();
+</script>
+</body>
+</html>
