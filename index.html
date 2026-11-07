@@ -34,6 +34,7 @@ button.g{background:transparent;color:var(--mut);border:1px solid var(--bd);font
 .tabs button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
 .tag{display:inline-block;font-size:11px;background:var(--ac);color:#fff;border-radius:6px;padding:1px 6px;margin-left:6px}
 svg{width:100%;height:60px;margin-top:6px}
+.ch{font-size:14px;margin:20px 0 8px;color:var(--ac);text-transform:uppercase;letter-spacing:.05em}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:14px;max-width:90%;display:none;z-index:9;text-align:center}
 section{display:none}section.on{display:block}
 label.ck{display:flex;align-items:center;gap:6px;font-size:14px}
@@ -44,7 +45,7 @@ label.ck input{flex:none;min-width:0;width:18px;height:18px}
 <main>
 <h1>🏋️ Mes PR CrossFit</h1>
 <div class="tabs" id="nav">
-  <button data-v="pr">PR</button><button data-v="wod">Entraînements</button><button data-v="mv">Mouvements</button><button data-v="pct">% Calcul</button>
+  <button data-v="pr">PR</button><button data-v="search">🔍 Recherche</button><button data-v="wod">Entraînements</button><button data-v="mv">Mouvements</button><button data-v="pct">% Calcul</button>
 </div>
 
 <section id="v-pr">
@@ -59,6 +60,11 @@ label.ck input{flex:none;min-width:0;width:18px;height:18px}
   </div>
   <div class="tabs" id="tabs"></div>
   <div id="list"></div>
+</section>
+
+<section id="v-search">
+  <div class="card"><input id="q" type="search" placeholder="Chercher un PR (mouvement, catégorie, note…)" style="width:100%"></div>
+  <div id="qres"></div>
 </section>
 
 <section id="v-wod">
@@ -183,22 +189,40 @@ function spark(arr){
 }
 function better(unit,a,b){return unit==="min:sec"?sn(unit,a)<sn(unit,b):sn(unit,a)>sn(unit,b)}
 
+function prCard(m,h){
+ h=h.slice().sort((a,b)=>a.d.localeCompare(b.d)||a.id-b.id);
+ let best=h[0];h.forEach(e=>{if(e.unit===best.unit&&better(e.unit,e.v,best.v))best=e});
+ return`<div class="card"><div class="mv"><div><strong>${esc(m)}</strong><div class="mut">${h.length} entrée${h.length>1?"s":""}</div></div><div class="best">${esc(best.v)}${U(best.unit)}</div></div>
+ ${spark(h.filter(e=>e.unit===best.unit))}
+ <div class="hist">${h.slice().reverse().map(e=>`<div><span>${e.d} · ${esc(e.v)}${U(e.unit)}${e.id===best.id?'<span class="tag">PR</span>':""}${e.n?` <span class="mut">— ${esc(e.n)}</span>`:""}</span><button class="g" data-a="delpr" data-id="${e.id}">✕</button></div>`).join("")}</div></div>`;
+}
+function groupByCat(names){
+ const o={};names.forEach(n=>(o[catOf(n)]=o[catOf(n)]||[]).push(n));
+ return[...Object.keys(moves()),"Autres"].filter(c=>o[c]).map(c=>[c,o[c]]);
+}
+function groupedHtml(names,by){
+ return groupByCat(names).map(([c,ns])=>`<h2 class="ch">${esc(c)} <span class="mut">· ${ns.length}</span></h2>`+ns.map(m=>prCard(m,by[m])).join("")).join("");
+}
 function renderPR(){
- const cats=["Tous",...new Set(S.prs.map(e=>catOf(e.m)))];
+ const has=new Set(S.prs.map(e=>catOf(e.m)));
+ const cats=["Tous",...[...Object.keys(moves()),"Autres"].filter(c=>has.has(c))];
  if(!cats.includes(cat))cat="Tous";
  $("tabs").innerHTML=cats.map(c=>`<button data-c="${esc(c)}" class="${c===cat?"on":""}">${esc(c)}</button>`).join("");
  const by={};S.prs.filter(e=>cat==="Tous"||catOf(e.m)===cat).forEach(e=>(by[e.m]=by[e.m]||[]).push(e));
- const names=Object.keys(by).sort();
+ const names=Object.keys(by).sort((a,b)=>a.localeCompare(b));
  if(!names.length){$("list").innerHTML=`<div class="card mut">Aucun PR pour l’instant. Ajoute ton premier ci-dessus.</div>`;return}
- $("list").innerHTML=names.map(m=>{
-  const h=by[m].sort((a,b)=>a.d.localeCompare(b.d)||a.id-b.id);
-  let best=h[0];h.forEach(e=>{if(e.unit===best.unit&&better(e.unit,e.v,best.v))best=e});
-  return`<div class="card"><div class="mv"><div><strong>${esc(m)}</strong><div class="mut">${h.length} entrée${h.length>1?"s":""}</div></div><div class="best">${esc(best.v)}${U(best.unit)}</div></div>
-  ${spark(h.filter(e=>e.unit===best.unit))}
-  <div class="hist">${h.slice().reverse().map(e=>`<div><span>${e.d} · ${esc(e.v)}${U(e.unit)}${e.id===best.id?'<span class="tag">PR</span>':""}${e.n?` <span class="mut">— ${esc(e.n)}</span>`:""}</span><button class="g" data-a="delpr" data-id="${e.id}">✕</button></div>`).join("")}</div></div>`;
- }).join("");
+ $("list").innerHTML=groupedHtml(names,by);
 }
-
+function norm(s){return String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
+function renderSearch(){
+ const q=norm($("q").value).trim();
+ if(!q){$("qres").innerHTML=`<div class="card mut">Écris le nom d’un mouvement, une catégorie ou un mot de tes notes. Exemples : squat, gym, 365.</div>`;return}
+ const terms=q.split(/\s+/),all={};
+ S.prs.forEach(e=>(all[e.m]=all[e.m]||[]).push(e));
+ const names=Object.keys(all).filter(m=>{const t=norm(m+" "+catOf(m)+" "+all[m].map(e=>e.v+" "+e.unit+" "+e.d+" "+(e.n||"")).join(" "));return terms.every(w=>t.includes(w))}).sort((a,b)=>a.localeCompare(b));
+ if(!names.length){$("qres").innerHTML=`<div class="card mut">Aucun PR trouvé pour « ${esc($("q").value.trim())} ».</div>`;return}
+ $("qres").innerHTML=`<div class="mut" style="margin-bottom:8px">${names.length} mouvement${names.length>1?"s":""} trouvé${names.length>1?"s":""}</div>`+groupedHtml(names,all);
+}
 const TL={time:"Temps",reps:"Reps / rounds",load:"Charge"};
 const WU={time:"min:sec",reps:"reps",load:"lb"};
 function renderW(){
@@ -257,11 +281,12 @@ function setValMode(){const t=$("unit").value==="min:sec";$("val").inputMode=t?"
 function tfmt(s){const d=s.replace(/\D/g,"").slice(0,6);return d.length<=2?d:d.slice(0,-2)+":"+d.slice(-2)}
 document.addEventListener("input",e=>{const t=e.target;if((t.id==="val"&&$("unit").value==="min:sec")||(t.id==="ls"&&t.dataset.t==="time"))t.value=tfmt(t.value)});
 $("unit").addEventListener("change",setValMode);$("mv").addEventListener("change",setValMode);
-function go(v){view=v;render()}
+function go(v){view=v;render();if(v==="search")setTimeout(()=>$("q").focus(),0)}
+$("q").addEventListener("input",renderSearch);
 function render(){
  $("nav").querySelectorAll("button").forEach(b=>b.className=b.dataset.v===view?"on":"");
- ["pr","wod","mv","pct"].forEach(v=>$("v-"+v).className=v===view?"on":"");
- fillMv();setValMode();renderPR();renderW();renderM();renderPct();
+ ["pr","search","wod","mv","pct"].forEach(v=>$("v-"+v).className=v===view?"on":"");
+ fillMv();setValMode();renderPR();renderW();renderM();renderPct();renderSearch();
 }
 
 document.addEventListener("click",e=>{
