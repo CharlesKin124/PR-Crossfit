@@ -122,9 +122,9 @@ const BASE={
  "Haltérophilie":["Snatch","Clean & Jerk","Clean","Power Clean","Jerk","Overhead Squat"],
  "Force":["Back Squat","Front Squat","Deadlift","Shoulder Press","Bench Press","Thruster"],
  "Gym":["Strict Pull-ups (max reps)","Muscle-ups (max reps)","Handstand Push-ups (max reps)"],
- "Benchmarks":["Fran","Murph","Grace","Helen","Cindy"]
+ "Benchmarks":["Amanda","Annie","Barbara","Cindy","Diane","Fran","Grace","Helen","Isabel","Murph","Nancy","Nate"]
 };
-const UNITS=["lb","kg","reps","min:sec"];
+const UNITS=["lb","kg","reps","min:sec","rounds"];
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const U=u=>u==="min:sec"?"":" "+u;
@@ -136,9 +136,9 @@ function load(){
 let S=load(),view="pr",cat="Tous",openW=null;
 function save(){try{localStorage.setItem("pr_v2",JSON.stringify(S))}catch(e){msg("Sauvegarde locale indisponible.")}}
 let tt;function msg(t){$("msg").textContent=t;const o=$("toast");o.textContent=t;o.style.display=t?"block":"none";clearTimeout(tt);tt=setTimeout(()=>{o.style.display="none"},3500)}
-function moves(){const o={};for(const c in BASE)o[c]=BASE[c].slice();S.moves.forEach(m=>(o[m.cat]=o[m.cat]||[]).push(m.name));return o}
+function moves(){const o={};for(const c in BASE)o[c]=BASE[c].slice();S.moves.forEach(m=>{const l=(o[m.cat]=o[m.cat]||[]);if(!Object.values(o).flat().includes(m.name))l.push(m.name)});return o}
 function catOf(n){const o=moves();for(const c in o)if(o[c].includes(n))return c;return"Autres"}
-function defUnit(n){const m=S.moves.find(x=>x.name===n);if(m)return m.unit;return/reps/.test(n)?"reps":BASE.Benchmarks.includes(n)?"min:sec":"lb"}
+function defUnit(n){const m=S.moves.find(x=>x.name===n);if(m)return m.unit;return/reps/.test(n)?"reps":["Cindy","Nate"].includes(n)?"rounds":BASE.Benchmarks.includes(n)?"min:sec":"lb"}
 function sec(v){const p=String(v).split(":");return(+p[0]||0)*60+(+p[1]||0)}
 function sn(unit,v){return unit==="min:sec"?sec(v):parseFloat(v)}
 function normT(v){
